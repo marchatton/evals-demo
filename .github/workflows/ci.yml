@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "lts/*"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+          # Avoid cache step failures when this repo intentionally omits a lockfile.
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      - name: Verify
+        run: |
+          pnpm -s run verify
+          pnpm -s run --if-present typecheck
+          pnpm -s run --if-present ast-grep
+          pnpm -s run --if-present knip
+
+      - name: Scaffold smoke tests
+        run: pnpm -s run smoke
